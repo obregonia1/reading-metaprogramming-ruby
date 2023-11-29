@@ -6,6 +6,21 @@ TryOver3 = Module.new
 # - `test_` メソッドがこのクラスに実装されていなくても `test_` から始まるメッセージに応答することができる
 # - TryOver3::A1 には `test_` から始まるインスタンスメソッドが定義されていない
 
+class TryOver3::A1
+  def run_test
+    nil
+  end
+
+  def method_missing(name)
+    if name.start_with?('test_')
+      define_singleton_method :name do
+        run_test
+      end
+    else
+      super
+    end
+  end
+end
 
 # Q2
 # 以下要件を満たす TryOver3::A2Proxy クラスを作成してください。
@@ -18,6 +33,25 @@ class TryOver3::A2
   end
 end
 
+class TryOver3::A2Proxy
+  def initialize(instance)
+    @source = instance
+  end
+
+  def method_missing(name, arg = nil)
+    return unless @source.class.instance_methods(false).include?(name)
+
+    if arg
+      @source.send(name, arg)
+    else
+      @source.send(name)
+    end
+  end
+
+  def respond_to_missing?(_name, include_private = false)
+    true
+  end
+end
 
 # Q3.
 # 02_define.rbのQ3ではOriginalAccessor の my_attr_accessor で定義した getter/setter に
@@ -37,6 +71,8 @@ module TryOver3::OriginalAccessor2
           self.class.define_method "#{name}?" do
             @attr == true
           end
+        elsif value != true && value !=false && respond_to?("#{name}?")
+          self.class.undef_method "#{name}?"
         end
         @attr = value
       end
@@ -44,14 +80,27 @@ module TryOver3::OriginalAccessor2
   end
 end
 
-
 # Q4
 # 以下のように実行できる TryOver3::A4 クラスを作成してください。
 # TryOver3::A4.runners = [:Hoge]
 # TryOver3::A4::Hoge.run
 # # => "run Hoge"
 # このとき、TryOver3::A4::Hogeという定数は定義されません。
+class TryOver3::A4
+  def self.runners=(arg)
+    @runner = arg[0]
+  end
 
+  def self.const_missing(name)
+    return self if name == @runner
+
+    super
+  end
+
+  def self.run
+    "run #{@runner}"
+  end
+end
 
 # Q5. チャレンジ問題！ 挑戦する方はテストの skip を外して挑戦してみてください。
 #
